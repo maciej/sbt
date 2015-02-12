@@ -204,7 +204,29 @@ object TestFramework {
 
 abstract class TestFunction(val taskDef: TaskDef, val runner: TestRunner, fun: (TestRunner) => (SuiteResult, Seq[TestTask])) {
 
-  def apply(): (SuiteResult, Seq[TestTask]) = fun(runner)
+  def apply(): (SuiteResult, Seq[TestTask]) = {
+    CurrentlyRunning.add(this)
+    CurrentlyRunning.list
+    try {
+      fun(runner)
+    } finally {
+      CurrentlyRunning.remove(this)
+    }
+  }
 
   def tags: Seq[String]
+}
+
+object CurrentlyRunning {
+
+  private var tasks: Set[TestFunction] = Set()
+
+  def add(fun: TestFunction) = this.synchronized { tasks += fun }
+
+  def list: Set[TestFunction] = this.synchronized {
+    println("Currently running: " + tasks.map(_.taskDef).mkString(", "))
+    tasks
+  }
+
+  def remove(fun: TestFunction) = this.synchronized { tasks -= fun }
 }
